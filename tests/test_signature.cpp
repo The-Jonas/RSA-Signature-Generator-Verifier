@@ -5,6 +5,7 @@
 #include "../include/rsa_core.h"
 #include "../include/padding_oaep.h"
 #include "../include/sha3.h"
+#include "../include/formatter.h"
 
 // Função auxiliar para imprimir vetores de bytes em hexadecimal
 void print_hex(const std::string& label, const std::vector<uint8_t>& data) {
@@ -60,6 +61,9 @@ int main() {
     std::cout << "\n[4] ASSINATURA DIGITAL GERADA (Número Gigante):" << std::endl;
     mpz_out_str(stdout, 10, assinatura_final);
     std::cout << "\n\n";
+
+    std::cout << "Formatando e salvando em arquivo..." << std::endl;
+    Formatter::save_signature_file("contrato.sig", assinatura_final, minhas_chaves);
 
     // Limpeza de memória
     mpz_clear(mensagem_matematica);

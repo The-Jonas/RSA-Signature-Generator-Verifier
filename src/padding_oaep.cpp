@@ -1,6 +1,8 @@
 #include "../include/padding_oaep.h"
 #include "../include/sha3.h"
 #include <iostream>
+#include <cstring>
+#include <cstdlib>
 #include <fstream>
 #include <stdexcept>
 
@@ -105,10 +107,25 @@ namespace OAEP {
 
     // Converter o número gigante do RSA novamente para vetor de bytes
     std::vector<uint8_t> mpz_to_bytes(const mpz_t n, size_t expected_size) {
-        std::vector<uint8_t> bytes(expected_size);
         size_t count;
-        mpz_export(bytes.data() + (expected_size - (mpz_sizeinbase(n, 2) + 7) / 8),
-                    &count, 1, 1, 0, 0, n);
+
+        // GMP vai usar o malloc internamente pra pegar o tamanho perfeito (com o NULL como parâmetro)
+        void* raw_bytes = mpz_export(NULL, &count, 1, 1, 0, 0, n);
+
+        std::vector<uint8_t> bytes(expected_size, 0);
+
+        if (raw_bytes != NULL) {
+            // Se o GMP retornou mais bytes que o esperado, cortamos o bit de sinal
+            size_t copy_size = std::min(count, expected_size);
+            size_t dest_offset = expected_size - copy_size;
+            size_t src_offset = count - copy_size;
+
+            // Copia os dados para o vetor com limite escrito de tamanho (acabando com os erros de memória)
+            std::memcpy(bytes.data() + dest_offset, (uint8_t*)raw_bytes + src_offset, copy_size);
+
+            free(raw_bytes);
+        }
+;
         return bytes;
     }
 

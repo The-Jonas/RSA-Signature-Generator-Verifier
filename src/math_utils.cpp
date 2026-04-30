@@ -27,7 +27,7 @@ namespace MathUtils {
 
         // Achar r e d tais que n - 1 = 2^r * d
         mpz_t d, n_minus_1;
-        mpz_inits(d, n_minus_1, NULL);
+        mpz_init(d); mpz_init(n_minus_1);
         mpz_sub_ui(n_minus_1, n, 1);
         mpz_set (d, n_minus_1);
 
@@ -44,7 +44,7 @@ namespace MathUtils {
 
         bool is_prime = true;
         mpz_t a, x;
-        mpz_inits(a, x, NULL);
+        mpz_init(a); mpz_init(x);
 
         // Rodar as iterações para teste
         for (int i = 0; i < iterations; i++) {
@@ -79,7 +79,7 @@ namespace MathUtils {
         }
 
         // Limpeza
-        mpz_clears(d, n_minus_1, a, x, NULL);
+        mpz_clear(d); mpz_clear(n_minus_1); mpz_clear(a); mpz_clear(x);
         gmp_randclear(state);
         return is_prime;
     }

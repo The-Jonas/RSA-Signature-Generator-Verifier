@@ -1,4 +1,5 @@
 #include "../include/padding_oaep.h"
+#include "../include/sha3.h"
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -29,19 +30,40 @@ namespace OAEP {
         return buffer;
     }
 
-    // ESQUELETOS POR ENQUANTO 
-
+    
+    // Calcula o hash de uma string vazia
     std::vector<uint8_t> sha3_hash_empty() {
-        //Retorna um vetor de 32 bits zerados provisionalmente
-        return std::vector<uint8_t>(32, 0);
+        return CryptoHash::sha3_256("");
     }
 
+    // Função geradora de máscaras 
+    // Pega uma seed pequena e "estica" ela até o tamanho necessário usando hashes
     std::vector<uint8_t> mgf1(const std::vector<uint8_t>& seed, size_t mask_len) {
-        //Uma máscara provisória só pro código compilar
+        std::vector<uint8_t> mask;
+        uint32_t counter = 0;       // O MGF1 usa um contador de 32 bytes
+
+        while(mask.size() < mask_len) {
+            std::vector<uint8_t> current_seed = seed;
+
+            // O contador de 4 bytes ao final da semente deve estar no formato Big-Endian
+            current_seed.push_back((counter >> 24) & 0xFF);
+            current_seed.push_back((counter >> 16) & 0xFF);
+            current_seed.push_back((counter >> 8) & 0xFF);
+            current_seed.push_back(counter & 0xFF);
+
+            // Calcula o hash da semente concatenada com o contador
+            std::vector<uint8_t> hash_result = CryptoHash::sha3_256(current_seed);
+
+            // Adiciona o resultado na máscara gigante
+            mask.insert(mask.end(), hash_result.begin(), hash_result.end());
+
+            counter++; 
+        }
+
         return std::vector<uint8_t>(mask_len, 0);
     }
 
-    // =====================================================
+
 
     // Aplicando o preenchimento OAP na mensagem
     std::vector<uint8_t> encode(const std::vector<uint8_t>& message, size_t block_size) {

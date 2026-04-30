@@ -5,7 +5,8 @@
 namespace RSA {
 
     void init_keys(KeyPair& keys) {
-        mpz_inits(keys.n, keys.e, keys.d, keys.p, keys.q, NULL);
+        mpz_init(keys.n); mpz_init(keys.e); mpz_init(keys.d);
+        mpz_init(keys.p); mpz_init(keys.q);
     }
 
     void generate_keys(KeyPair& keys, int bits) {
@@ -20,7 +21,7 @@ namespace RSA {
 
         // Tontiente de Euler -> phi(n) = (p - 1) * (q - 1)
         mpz_t p_minus_1, q_minus_1, phi;
-        mpz_inits(p_minus_1, keys.p, 1);
+        mpz_init(p_minus_1); mpz_init(q_minus_1); mpz_init(phi);
 
         mpz_sub_ui(p_minus_1, keys.p, 1);
         mpz_sub_ui(q_minus_1, keys.q, 1);
@@ -33,7 +34,7 @@ namespace RSA {
         // Usamos euclides estendido: a*x + b*y = gcd(a,b)
         // Queremos e*d + phi*y = 1, então 'x' será o nosso 'd'
         mpz_t g, y;
-        mpz_inits(g, y, NULL);
+        mpz_init(g); mpz_init(y);
 
         MathUtils::extended_gcd(g, keys.d, y, keys.e, phi);
 
@@ -42,12 +43,14 @@ namespace RSA {
             mpz_add(keys.d, keys.d, phi);
         }
 
-        mpz_clears(p_minus_1, q_minus_1, phi, g, y, NULL);
+        mpz_clear(p_minus_1); mpz_clear(q_minus_1); mpz_clear(phi); 
+        mpz_clear(g); mpz_clear(y);
         std::cout << "Par de chaves RSA gerado com sucesso!" << std::endl;
     }
 
     void clear_keys(KeyPair& keys) {
-        mpz_clears(keys.n, keys.e, keys.d, keys.q, NULL);
+        mpz_clear(keys.n); mpz_clear(keys.e);
+        mpz_clear(keys.d); mpz_clear(keys.q);
     }
 
     // Cifragem bruta (M^e mod n)
@@ -56,7 +59,7 @@ namespace RSA {
     }
 
     // Decifragem bruta (C^d mod n)
-    void encrypt_raw(mpz_t result, const mpz_t cipher, const KeyPair& keys) {
+    void decrypt_raw(mpz_t result, const mpz_t cipher, const KeyPair& keys) {
         MathUtils::power(result, cipher, keys.d, keys.n);
     }
 

@@ -58,11 +58,11 @@ namespace OAEP {
 
             // Adiciona o resultado na máscara gigante
             mask.insert(mask.end(), hash_result.begin(), hash_result.end());
-
             counter++; 
         }
 
-        return std::vector<uint8_t>(mask_len, 0);
+        mask.resize(mask_len);
+        return mask;
     }
 
 
@@ -96,6 +96,70 @@ namespace OAEP {
         EM.insert(EM.end(), maskedDB.begin(), maskedDB.end());
 
         return EM;
+    }
+
+    // Remove o preenchimento OAEP
+    // Não é nada intuitivo "dar a ré" em tudo que fizemos anteriormente, então vou separar essa parte em Passos
+    std::vector<uint8_t> decode(const std::vector<uint8_t>& encoded_block, size_t block_size) {
+        size_t hLen = 32;
+
+        if (encoded_block.size() != block_size) {
+            throw std::runtime_error("[ERROR OAEP] Tamanho do bloco incorreto na decifragem!");
+        }
+
+        if (encoded_block[0] != 0x00) {
+            // Se o primeiro byte não for 0, ou o arquivo corrompeu, ou a chave RSA está errada!
+            throw std::runtime_error("[ERRO OAEP] Primeiro byte não é zero");
+        }
+
+        // Passo 1. Separar o bloco gigante em dois pedaços: maskedSeed e maskedDB
+        std::vector<uint8_t> maskedSeed(encoded_block.begin() + 1, encoded_block.begin() + 1 + hLen);
+        std::vector<uint8_t> maskedDB(encoded_block.begin() + 1 + hLen, encoded_block.end());
+        
+        // ==============================
+        // DESFAZENDO A REDE DE FEISTEL
+        // ==============================
+
+        // Passo 2. Descobrimos a máscara da semente utilizando o maskedDB
+        std::vector<uint8_t> seedMask = mgf1(maskedDB, hLen);
+
+        // Passo 3. maskedSeed XOR seedMask (Fazendo a semente original aparecer)
+        std::vector<uint8_t> seed = xor_bytes(maskedSeed, seedMask);
+
+        // Passo 4. Agora usamos a semente original para descobrir a máscara do banco de dados
+        std::vector<uint8_t> dbMask = mgf1(seed, maskedDB.size());
+
+        // Passo 5. DB = maskedDB XOR dbMask (Fazendo o bloco de dados original aparecer)
+        std::vector<uint8_t> DB = xor_bytes(maskedDB, dbMask);
+
+        // ===========================================
+        // VERIFICANDO A INTEGRIDADE (É uma fraude??)
+        // ===========================================
+
+        // O DB original era: lHash || Zeros (PS) || 0x01 || Mensagem(Hash)
+        std::vector<uint8_t> lHash = sha3_hash_empty();
+
+        for (size_t i = 0; i < hLen; i++) {
+            if (DB[i] != lHash[i]) {
+                throw std::runtime_error("[ERRO OAEP] Hash de integridade falhou. Assinatura forjada!");
+            } 
+        }
+
+        // Pula o lHash e procura o byte delimitador (0x01) no meio dos zeros de preenchimento
+        size_t index = hLen;
+        while (index < DB.size() && DB[index] == 0x00) {
+            index++;
+        }
+
+        if (index == DB.size() || DB[index] != 0x01) {
+            throw std::runtime_error("[ERRO OAEP] Delimitador náo encontrado. Assinatura corrompida!");
+        }
+
+        // Tudo o que sobrar depois do byte 0x01 é nossa mensagem real
+        index++;
+        std::vector<uint8_t> message(DB.begin() + index, DB.end());
+
+        return message;
     }
 
     // Converter vetor de bytes para o número gigante do RSA

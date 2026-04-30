@@ -38,10 +38,14 @@ namespace Formatter {
             return;
         }
 
+        // Descobrimos o tamanho real (em bytes) do Módulo (N) e do Expoente (E)
+        size_t n_size_bytes = (mpz_sizeinbase(keys.n, 2) + 7) / 8;
+        size_t e_size_bytes = (mpz_sizeinbase(keys.e, 2) + 7) / 8;
+
         // Precisamos converter o mpz_t para bytes antes do BASE64, a chave tem 1024 bits (128 bytes) e o 'e' é menor (65537) - 4 bytes
-        std::vector<uint8_t> sig_bytes = OAEP::mpz_to_bytes(signature, 128);
-        std::vector<uint8_t> n_bytes = OAEP::mpz_to_bytes(keys.n, 128);
-        std::vector<uint8_t> e_bytes = OAEP::mpz_to_bytes(keys.e, 4);
+        std::vector<uint8_t> sig_bytes = OAEP::mpz_to_bytes(signature, n_size_bytes);
+        std::vector<uint8_t> n_bytes = OAEP::mpz_to_bytes(keys.n, n_size_bytes);
+        std::vector<uint8_t> e_bytes = OAEP::mpz_to_bytes(keys.e, e_size_bytes);
 
         // Colocar "Tags" para o Verificador achar mais fácil depois
         file << "-----BEGIN RSA PUBLIC KEY N-----\n";
